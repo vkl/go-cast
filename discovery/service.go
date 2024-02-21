@@ -9,9 +9,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast"
-	"github.com/barnybug/go-cast/log"
 	"github.com/hashicorp/mdns"
+	"github.com/vkl/go-cast"
+	"github.com/vkl/go-cast/log"
 )
 
 type Service struct {

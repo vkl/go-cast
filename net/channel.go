@@ -5,8 +5,8 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast/api"
-	"github.com/barnybug/go-cast/log"
+	"github.com/vkl/go-cast/api"
+	"github.com/vkl/go-cast/log"
 )
 
 type Channel struct {

@@ -7,10 +7,10 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast/api"
-	"github.com/barnybug/go-cast/events"
-	"github.com/barnybug/go-cast/log"
-	"github.com/barnybug/go-cast/net"
+	"github.com/vkl/go-cast/api"
+	"github.com/vkl/go-cast/events"
+	"github.com/vkl/go-cast/log"
+	"github.com/vkl/go-cast/net"
 )
 
 const interval = time.Second * 5

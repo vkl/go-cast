@@ -1,7 +1,7 @@
 export GO15VENDOREXPERIMENT=1
 
 exe = ./cmd/cast
-buildargs = -ldflags '-w -s -X github.com/barnybug/go-cast.Version=${TRAVIS_TAG}'
+buildargs = -ldflags '-w -s -X github.com/vkl/go-cast.Version=${TRAVIS_TAG}'
 
 .PHONY: all build install test coverage release upx
 

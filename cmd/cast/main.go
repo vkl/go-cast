@@ -11,12 +11,12 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast"
-	"github.com/barnybug/go-cast/controllers"
-	"github.com/barnybug/go-cast/discovery"
-	"github.com/barnybug/go-cast/events"
-	"github.com/barnybug/go-cast/log"
 	"github.com/urfave/cli"
+	"github.com/vkl/go-cast"
+	"github.com/vkl/go-cast/controllers"
+	"github.com/vkl/go-cast/discovery"
+	"github.com/vkl/go-cast/events"
+	"github.com/vkl/go-cast/log"
 )
 
 func checkErr(err error) {

@@ -8,10 +8,10 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast/api"
-	"github.com/barnybug/go-cast/events"
-	"github.com/barnybug/go-cast/log"
-	"github.com/barnybug/go-cast/net"
+	"github.com/vkl/go-cast/api"
+	"github.com/vkl/go-cast/events"
+	"github.com/vkl/go-cast/log"
+	"github.com/vkl/go-cast/net"
 )
 
 type MediaController struct {
@@ -30,6 +30,9 @@ var commandMediaPlay = net.PayloadHeaders{Type: "PLAY"}
 var commandMediaPause = net.PayloadHeaders{Type: "PAUSE"}
 var commandMediaStop = net.PayloadHeaders{Type: "STOP"}
 var commandMediaLoad = net.PayloadHeaders{Type: "LOAD"}
+var commandMediaQueueInsert = net.PayloadHeaders{Type: "QUEUE_INSERT"}
+var commandMediaQueueNext = net.PayloadHeaders{Type: "QUEUE_NEXT"}
+var commandMediaQueuePrev = net.PayloadHeaders{Type: "QUEUE_PREV"}
 
 type MediaCommand struct {
 	net.PayloadHeaders
@@ -42,6 +45,22 @@ type LoadMediaCommand struct {
 	CurrentTime int         `json:"currentTime"`
 	Autoplay    bool        `json:"autoplay"`
 	CustomData  interface{} `json:"customData"`
+}
+
+type MediaItemQueue struct {
+	Media       MediaItem `json:"media"`
+	Autoplay    bool      `json:"autoplay"`
+	StartTime   int       `json:"startTime"`
+	PreloadTime int       `json:"preloadTime"`
+}
+
+type QueueMediaCommand struct {
+	net.PayloadHeaders
+	Items          []MediaItemQueue `json:"items"`
+	MediaSessionID int              `json:"mediaSessionId"`
+	CurrentTime    int              `json:"currentTime"`
+	Autoplay       bool             `json:"autoplay"`
+	CustomData     interface{}      `json:"customData"`
 }
 
 type MediaItem struct {
@@ -99,7 +118,7 @@ func (c *MediaController) parseStatus(message *api.CastMessage) (*MediaStatusRes
 	err := json.Unmarshal([]byte(*message.PayloadUtf8), response)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
+		return nil, fmt.Errorf("failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
 	}
 
 	for _, status := range response.Status {
@@ -136,7 +155,7 @@ func (c *MediaController) Start(ctx context.Context) error {
 func (c *MediaController) GetStatus(ctx context.Context) (*MediaStatusResponse, error) {
 	message, err := c.channel.Request(ctx, &getMediaStatus)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get receiver status: %s", err)
+		return nil, fmt.Errorf("failed to get receiver status: %s", err)
 	}
 
 	return c.parseStatus(message)
@@ -145,7 +164,23 @@ func (c *MediaController) GetStatus(ctx context.Context) (*MediaStatusResponse, 
 func (c *MediaController) Play(ctx context.Context) (*api.CastMessage, error) {
 	message, err := c.channel.Request(ctx, &MediaCommand{commandMediaPlay, c.MediaSessionID})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send play command: %s", err)
+		return nil, fmt.Errorf("failed to send play command: %s", err)
+	}
+	return message, nil
+}
+
+func (c *MediaController) QueueNext(ctx context.Context) (*api.CastMessage, error) {
+	message, err := c.channel.Request(ctx, &MediaCommand{commandMediaQueueNext, c.MediaSessionID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to send queue next command: %s", err)
+	}
+	return message, nil
+}
+
+func (c *MediaController) QueuePrev(ctx context.Context) (*api.CastMessage, error) {
+	message, err := c.channel.Request(ctx, &MediaCommand{commandMediaQueuePrev, c.MediaSessionID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to send queue prev command: %s", err)
 	}
 	return message, nil
 }
@@ -153,7 +188,7 @@ func (c *MediaController) Play(ctx context.Context) (*api.CastMessage, error) {
 func (c *MediaController) Pause(ctx context.Context) (*api.CastMessage, error) {
 	message, err := c.channel.Request(ctx, &MediaCommand{commandMediaPause, c.MediaSessionID})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send pause command: %s", err)
+		return nil, fmt.Errorf("failed to send pause command: %s", err)
 	}
 	return message, nil
 }
@@ -165,30 +200,70 @@ func (c *MediaController) Stop(ctx context.Context) (*api.CastMessage, error) {
 	}
 	message, err := c.channel.Request(ctx, &MediaCommand{commandMediaStop, c.MediaSessionID})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send stop command: %s", err)
+		return nil, fmt.Errorf("failed to send stop command: %s", err)
 	}
 	return message, nil
 }
 
-func (c *MediaController) LoadMedia(ctx context.Context, media MediaItem, currentTime int, autoplay bool, customData interface{}) (*api.CastMessage, error) {
-	message, err := c.channel.Request(ctx, &LoadMediaCommand{
+func (c *MediaController) LoadMedia(
+	ctx context.Context,
+	media MediaItem,
+	currentTime int,
+	autoplay bool,
+	customData interface{}) (*api.CastMessage, error) {
+
+	command := &LoadMediaCommand{
 		PayloadHeaders: commandMediaLoad,
 		Media:          media,
 		CurrentTime:    currentTime,
 		Autoplay:       autoplay,
 		CustomData:     customData,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Failed to send load command: %s", err)
 	}
-
+	message, err := c.channel.Request(ctx, command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send load command: %s", err)
+	}
 	response := &net.PayloadHeaders{}
 	err = json.Unmarshal([]byte(*message.PayloadUtf8), response)
 	if err != nil {
 		return nil, err
 	}
 	if response.Type == "LOAD_FAILED" {
-		return nil, errors.New("Load media failed")
+		return nil, errors.New("load media failed")
+	}
+
+	return message, nil
+}
+
+func (c *MediaController) QueueInsert(
+	ctx context.Context,
+	mediaItems []MediaItemQueue,
+	currentTime int,
+	autoplay bool,
+	customData interface{}) (*api.CastMessage, error) {
+	if c.MediaSessionID == 0 {
+		// no current session to stop
+		return nil, nil
+	}
+	command := &QueueMediaCommand{
+		PayloadHeaders: commandMediaQueueInsert,
+		Items:          mediaItems,
+		MediaSessionID: c.MediaSessionID,
+		CurrentTime:    currentTime,
+		Autoplay:       autoplay,
+		CustomData:     customData,
+	}
+	message, err := c.channel.Request(ctx, command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send queue insert command: %s", err)
+	}
+	response := &net.PayloadHeaders{}
+	err = json.Unmarshal([]byte(*message.PayloadUtf8), response)
+	if err != nil {
+		return nil, err
+	}
+	if response.Type == "LOAD_FAILED" {
+		return nil, errors.New("queue insert media failed")
 	}
 
 	return message, nil

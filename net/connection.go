@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/barnybug/go-cast/api"
-	"github.com/barnybug/go-cast/log"
 	"github.com/gogo/protobuf/proto"
+	"github.com/vkl/go-cast/api"
+	"github.com/vkl/go-cast/log"
 )
 
 type Connection struct {
