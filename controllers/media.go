@@ -39,6 +39,31 @@ type MediaCommand struct {
 	MediaSessionID int `json:"mediaSessionId"`
 }
 
+type MetadataType byte
+
+const (
+	GENERIC MetadataType = iota
+	MOVIE
+	TV_SHOW
+	MUSIC_TRACK
+	PHOTO
+	AUDIOBOOK_CHAPTER
+)
+
+type MediaImage struct {
+	Url    string `json:"url"`
+	Height int    `json:"height"`
+	Width  int    `json:"width"`
+}
+
+type MediaMetadata struct {
+	MetadataType string `json:"metadataType"`
+	Artist       string `json:"artist"`
+	Title        string `json:"title"`
+	PosterUrl    string `json:"posterUrl"`
+	Images       []MediaImage
+}
+
 type LoadMediaCommand struct {
 	net.PayloadHeaders
 	Media       MediaItem   `json:"media"`
@@ -64,16 +89,18 @@ type QueueMediaCommand struct {
 }
 
 type MediaItem struct {
-	ContentId   string `json:"contentId"`
-	StreamType  string `json:"streamType"`
-	ContentType string `json:"contentType"`
+	ContentId   string        `json:"contentId"`
+	StreamType  string        `json:"streamType"`
+	ContentType string        `json:"contentType"`
+	MetaData    MediaMetadata `json:"metadata"`
 }
 
 type MediaStatusMedia struct {
-	ContentId   string  `json:"contentId"`
-	StreamType  string  `json:"streamType"`
-	ContentType string  `json:"contentType"`
-	Duration    float64 `json:"duration"`
+	ContentId   string        `json:"contentId"`
+	StreamType  string        `json:"streamType"`
+	ContentType string        `json:"contentType"`
+	Duration    float64       `json:"duration"`
+	MetaData    MediaMetadata `json:"metadata"`
 }
 
 func NewMediaController(conn *net.Connection, eventsCh chan events.Event, sourceId, destinationID string) *MediaController {
@@ -108,7 +135,16 @@ func (c *MediaController) onStatus(message *api.CastMessage) {
 	}
 
 	for _, status := range response.Status {
-		c.sendEvent(*status)
+		event := events.MediaStatusUpdated{
+			PlayerState: (*status).PlayerState,
+			CurrentTime: (*status).CurrentTime,
+		}
+		if status.Media != nil {
+			event.MetaData = new(string)
+			*(event.MetaData) = fmt.Sprintf(
+				"%s : %s", status.Media.MetaData.Artist, status.Media.MetaData.Title)
+		}
+		c.sendEvent(event)
 	}
 }
 

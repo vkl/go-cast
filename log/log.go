@@ -2,7 +2,7 @@ package log
 
 import "log"
 
-var Debug = false
+var Debug = true
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)

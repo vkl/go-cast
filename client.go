@@ -80,6 +80,17 @@ func (c *Client) String() string {
 	return fmt.Sprintf("%s - %s:%d", c.name, c.host, c.port)
 }
 
+func (c *Client) IsConnected() bool {
+	if c.conn == nil {
+		return false
+	}
+	connState := c.conn.GetTlsConnectionState()
+	if connState == nil {
+		return false
+	}
+	return connState.HandshakeComplete
+}
+
 func (c *Client) Connect(ctx context.Context) error {
 	c.conn = castnet.NewConnection()
 	err := c.conn.Connect(ctx, c.host, c.port)
@@ -117,12 +128,15 @@ func (c *Client) NewChannel(sourceId, destinationId, namespace string) *castnet.
 	return c.conn.NewChannel(sourceId, destinationId, namespace)
 }
 
-func (c *Client) Close() {
+func (c *Client) Close() error {
+	var err error
 	c.cancel()
 	if c.conn != nil {
-		c.conn.Close()
+		err = c.conn.Close()
 		c.conn = nil
 	}
+	c.media = nil
+	return err
 }
 
 func (c *Client) Receiver() *controllers.ReceiverController {
@@ -162,7 +176,7 @@ func (c *Client) launchURLApp(ctx context.Context) (string, error) {
 func (c *Client) IsPlaying(ctx context.Context) bool {
 	status, err := c.receiver.GetStatus(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		return false
 	}
 	app := status.GetSessionByAppId(AppMedia)

@@ -33,6 +33,11 @@ func (c *Connection) NewChannel(sourceId, destinationId, namespace string) *Chan
 	return channel
 }
 
+func (c *Connection) GetTlsConnectionState() *tls.ConnectionState {
+	connState := c.conn.ConnectionState()
+	return &connState
+}
+
 func (c *Connection) Connect(ctx context.Context, host net.IP, port int) error {
 	var err error
 	deadline, _ := ctx.Deadline()
@@ -43,7 +48,7 @@ func (c *Connection) Connect(ctx context.Context, host net.IP, port int) error {
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to connect to Chromecast: %s", err)
+		return fmt.Errorf("failed to connect to Chromecast: %s", err)
 	}
 
 	go c.ReceiveLoop()
