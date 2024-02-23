@@ -60,7 +60,15 @@ func (c *ReceiverController) onStatus(message *api.CastMessage) {
 
 	c.status = response.Status
 	vol := response.Status.Volume
-	c.sendEvent(events.StatusUpdated{Level: *vol.Level, Muted: *vol.Muted})
+	displayName := ""
+	for _, app := range response.Status.Applications {
+		displayName += *app.DisplayName
+	}
+	c.sendEvent(events.StatusUpdated{
+		Level:       *vol.Level,
+		Muted:       *vol.Muted,
+		DisplayName: displayName,
+	})
 
 	for _, app := range response.Status.Applications {
 		if _, ok := previous[*app.AppID]; ok {

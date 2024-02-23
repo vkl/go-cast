@@ -1,6 +1,7 @@
 package events
 
 type StatusUpdated struct {
-	Level float64
-	Muted bool
+	Level       float64
+	Muted       bool
+	DisplayName string
 }

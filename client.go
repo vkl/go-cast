@@ -14,18 +14,19 @@ import (
 )
 
 type Client struct {
-	name       string
-	info       map[string]string
-	host       net.IP
-	port       int
-	conn       *castnet.Connection
-	ctx        context.Context
-	cancel     context.CancelFunc
-	heartbeat  *controllers.HeartbeatController
-	connection *controllers.ConnectionController
-	receiver   *controllers.ReceiverController
-	media      *controllers.MediaController
-	url        *controllers.URLController
+	name        string
+	info        map[string]string
+	host        net.IP
+	port        int
+	conn        *castnet.Connection
+	ctx         context.Context
+	cancel      context.CancelFunc
+	heartbeat   *controllers.HeartbeatController
+	connection  *controllers.ConnectionController
+	receiver    *controllers.ReceiverController
+	media       *controllers.MediaController
+	url         *controllers.URLController
+	isconnected bool
 
 	Events chan events.Event
 }
@@ -81,14 +82,7 @@ func (c *Client) String() string {
 }
 
 func (c *Client) IsConnected() bool {
-	if c.conn == nil {
-		return false
-	}
-	connState := c.conn.GetTlsConnectionState()
-	if connState == nil {
-		return false
-	}
-	return connState.HandshakeComplete
+	return c.isconnected
 }
 
 func (c *Client) Connect(ctx context.Context) error {
@@ -119,6 +113,8 @@ func (c *Client) Connect(ctx context.Context) error {
 		return err
 	}
 
+	c.isconnected = true
+
 	c.Events <- events.Connected{}
 
 	return nil
@@ -136,6 +132,8 @@ func (c *Client) Close() error {
 		c.conn = nil
 	}
 	c.media = nil
+	c.receiver = nil
+	c.isconnected = false
 	return err
 }
 
@@ -179,14 +177,43 @@ func (c *Client) IsPlaying(ctx context.Context) bool {
 		log.Println(err)
 		return false
 	}
-	app := status.GetSessionByAppId(AppMedia)
-	if app == nil {
+	if len(status.Applications) == 0 {
 		return false
 	}
-	if *app.StatusText == "Ready To Cast" {
-		return false
+	for _, app := range status.Applications {
+		if *app.StatusText == "Ready To Cast" {
+			return false
+		}
 	}
 	return true
+}
+
+func (c *Client) AttachMedia(ctx context.Context) (*controllers.MediaController, error) {
+	if c.media == nil {
+		status, err := c.receiver.GetStatus(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(status.Applications) == 0 {
+			return nil, nil
+		}
+		transportId := ""
+		for _, app := range status.Applications {
+			if app.TransportId != nil {
+				transportId = *(app.TransportId)
+				break
+			}
+		}
+		conn := controllers.NewConnectionController(c.conn, c.Events, DefaultSender, transportId)
+		if err := conn.Start(ctx); err != nil {
+			return nil, err
+		}
+		c.media = controllers.NewMediaController(c.conn, c.Events, DefaultSender, transportId)
+		if err := c.media.Start(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return c.media, nil
 }
 
 func (c *Client) Media(ctx context.Context) (*controllers.MediaController, error) {
@@ -205,6 +232,27 @@ func (c *Client) Media(ctx context.Context) (*controllers.MediaController, error
 		}
 	}
 	return c.media, nil
+}
+
+func (c *Client) NewMedia(ctx context.Context) (*controllers.MediaController, error) {
+	c.media = nil
+	transportId, err := c.launchMediaApp(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn := controllers.NewConnectionController(c.conn, c.Events, DefaultSender, transportId)
+	if err := conn.Start(ctx); err != nil {
+		return nil, err
+	}
+	c.media = controllers.NewMediaController(c.conn, c.Events, DefaultSender, transportId)
+	if err := c.media.Start(ctx); err != nil {
+		return nil, err
+	}
+	return c.media, nil
+}
+
+func (c *Client) RemoveMediaController() {
+	c.media = nil
 }
 
 func (c *Client) URL(ctx context.Context) (*controllers.URLController, error) {

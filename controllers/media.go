@@ -57,10 +57,10 @@ type MediaImage struct {
 }
 
 type MediaMetadata struct {
-	MetadataType string `json:"metadataType"`
-	Artist       string `json:"artist"`
-	Title        string `json:"title"`
-	PosterUrl    string `json:"posterUrl"`
+	MetadataType MetadataType `json:"metadataType"`
+	Artist       string       `json:"artist"`
+	Title        string       `json:"title"`
+	PosterUrl    string       `json:"posterUrl"`
 	Images       []MediaImage
 }
 
