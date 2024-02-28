@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"golang.org/x/net/context"
 
@@ -13,31 +12,6 @@ import (
 	"github.com/vkl/go-cast/log"
 	"github.com/vkl/go-cast/net"
 )
-
-type MediaController struct {
-	interval       time.Duration
-	channel        *net.Channel
-	eventsCh       chan events.Event
-	DestinationID  string
-	MediaSessionID int
-}
-
-const NamespaceMedia = "urn:x-cast:com.google.cast.media"
-
-var getMediaStatus = net.PayloadHeaders{Type: "GET_STATUS"}
-
-var commandMediaPlay = net.PayloadHeaders{Type: "PLAY"}
-var commandMediaPause = net.PayloadHeaders{Type: "PAUSE"}
-var commandMediaStop = net.PayloadHeaders{Type: "STOP"}
-var commandMediaLoad = net.PayloadHeaders{Type: "LOAD"}
-var commandMediaQueueInsert = net.PayloadHeaders{Type: "QUEUE_INSERT"}
-var commandMediaQueueNext = net.PayloadHeaders{Type: "QUEUE_NEXT"}
-var commandMediaQueuePrev = net.PayloadHeaders{Type: "QUEUE_PREV"}
-
-type MediaCommand struct {
-	net.PayloadHeaders
-	MediaSessionID int `json:"mediaSessionId"`
-}
 
 type MetadataType byte
 
@@ -103,7 +77,36 @@ type MediaStatusMedia struct {
 	MetaData    MediaMetadata `json:"metadata"`
 }
 
-func NewMediaController(conn *net.Connection, eventsCh chan events.Event, sourceId, destinationID string) *MediaController {
+const NamespaceMedia = "urn:x-cast:com.google.cast.media"
+
+var getMediaStatus = net.PayloadHeaders{Type: "GET_STATUS"}
+
+var commandMediaPlay = net.PayloadHeaders{Type: "PLAY"}
+var commandMediaPause = net.PayloadHeaders{Type: "PAUSE"}
+var commandMediaStop = net.PayloadHeaders{Type: "STOP"}
+var commandMediaLoad = net.PayloadHeaders{Type: "LOAD"}
+var commandMediaQueueInsert = net.PayloadHeaders{Type: "QUEUE_INSERT"}
+var commandMediaQueueNext = net.PayloadHeaders{Type: "QUEUE_NEXT"}
+var commandMediaQueuePrev = net.PayloadHeaders{Type: "QUEUE_PREV"}
+
+type MediaCommand struct {
+	net.PayloadHeaders
+	MediaSessionID int `json:"mediaSessionId"`
+}
+
+type MediaController struct {
+	channel        *net.Channel
+	eventsCh       chan events.Event
+	DestinationID  string
+	MediaSessionID int
+}
+
+func NewMediaController(
+	conn *net.Connection,
+	eventsCh chan events.Event,
+	sourceId,
+	destinationID string,
+) *MediaController {
 	controller := &MediaController{
 		channel:       conn.NewChannel(sourceId, destinationID, NamespaceMedia),
 		eventsCh:      eventsCh,
@@ -124,7 +127,7 @@ func (c *MediaController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Printf("Dropped event: %#v", event)
+		log.Debugf("Dropped event: %#v", event)
 	}
 }
 

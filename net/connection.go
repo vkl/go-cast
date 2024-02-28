@@ -51,56 +51,62 @@ func (c *Connection) Connect(ctx context.Context, host net.IP, port int) error {
 		return fmt.Errorf("failed to connect to Chromecast: %s", err)
 	}
 
-	go c.ReceiveLoop()
+	go c.ReceiveLoop(ctx)
 
 	return nil
 }
 
-func (c *Connection) ReceiveLoop() {
+func (c *Connection) ReceiveLoop(ctx context.Context) {
 	for {
-		var length uint32
-		err := binary.Read(c.conn, binary.BigEndian, &length)
-		if err != nil {
-			log.Printf("Failed to read packet length: %s", err)
-			break
-		}
-		if length == 0 {
-			log.Println("Empty packet received")
-			continue
-		}
+		select {
+		case <-ctx.Done():
+			log.Infoln("stop receive loop")
+			return
+		default:
+			var length uint32
+			err := binary.Read(c.conn, binary.BigEndian, &length)
+			if err != nil {
+				log.Debugf("Failed to read packet length: %s", err)
+				break
+			}
+			if length == 0 {
+				log.Debugln("Empty packet received")
+				continue
+			}
 
-		packet := make([]byte, length)
-		i, err := io.ReadFull(c.conn, packet)
-		if err != nil {
-			log.Printf("Failed to read packet: %s", err)
-			break
-		}
+			packet := make([]byte, length)
+			i, err := io.ReadFull(c.conn, packet)
+			if err != nil {
+				log.Debugf("Failed to read packet: %s", err)
+				break
+			}
 
-		if i != int(length) {
-			log.Printf("Invalid packet size. Wanted: %d Read: %d", length, i)
-			break
-		}
+			if i != int(length) {
+				log.Debugf("Invalid packet size. Wanted: %d Read: %d", length, i)
+				break
+			}
 
-		message := &api.CastMessage{}
-		err = proto.Unmarshal(packet, message)
-		if err != nil {
-			log.Printf("Failed to unmarshal CastMessage: %s", err)
-			break
-		}
+			message := &api.CastMessage{}
+			err = proto.Unmarshal(packet, message)
+			if err != nil {
+				log.Debugf("Failed to unmarshal CastMessage: %s", err)
+				break
+			}
 
-		log.Printf("%s ⇐ %s [%s]: %+v",
-			*message.DestinationId, *message.SourceId, *message.Namespace, *message.PayloadUtf8)
+			log.Debugf("%s ⇐ %s [%s]: %+v",
+				*message.DestinationId, *message.SourceId, *message.Namespace, *message.PayloadUtf8)
 
-		var headers PayloadHeaders
-		err = json.Unmarshal([]byte(*message.PayloadUtf8), &headers)
+			var headers PayloadHeaders
+			err = json.Unmarshal([]byte(*message.PayloadUtf8), &headers)
 
-		if err != nil {
-			log.Printf("Failed to unmarshal message: %s", err)
-			break
-		}
+			if err != nil {
+				log.Debugf("Failed to unmarshal message: %s", err)
+				break
+			}
 
-		for _, channel := range c.channels {
-			channel.Message(message, &headers)
+			for _, channel := range c.channels {
+				channel.Message(message, &headers)
+			}
 		}
 	}
 }
@@ -127,7 +133,7 @@ func (c *Connection) Send(payload interface{}, sourceId, destinationId, namespac
 		return err
 	}
 
-	log.Printf("%s ⇒ %s [%s]: %s", *message.SourceId, *message.DestinationId, *message.Namespace, *message.PayloadUtf8)
+	log.Debugf("%s ⇒ %s [%s]: %s", *message.SourceId, *message.DestinationId, *message.Namespace, *message.PayloadUtf8)
 
 	err = binary.Write(c.conn, binary.BigEndian, uint32(len(data)))
 	if err != nil {

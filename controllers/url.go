@@ -62,7 +62,7 @@ func (c *URLController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Printf("Dropped event: %#v", event)
+		log.Debugf("Dropped event: %#v", event)
 	}
 }
 

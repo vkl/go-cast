@@ -49,7 +49,7 @@ func (c *HeartbeatController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Printf("Dropped event: %#v", event)
+		log.Debugf("Dropped event: %#v", event)
 	}
 }
 
@@ -70,24 +70,26 @@ func (c *HeartbeatController) Start(ctx context.Context) error {
 			case <-c.ticker.C:
 				if atomic.LoadInt64(&c.pongs) >= maxBacklog {
 					log.Errorf("Missed %d pongs", c.pongs)
-					c.sendEvent(events.Disconnected{errors.New("Ping timeout")})
+					c.sendEvent(events.Disconnected{
+						Reason: errors.New("ping timeout"),
+					})
 					break LOOP
 				}
 				err := c.channel.Send(ping)
 				atomic.AddInt64(&c.pongs, 1)
 				if err != nil {
 					log.Errorf("Error sending ping: %s", err)
-					c.sendEvent(events.Disconnected{err})
+					c.sendEvent(events.Disconnected{Reason: err})
 					break LOOP
 				}
 			case <-ctx.Done():
-				log.Println("Heartbeat stopped")
+				log.Debugln("Heartbeat stopped")
 				break LOOP
 			}
 		}
 	}()
 
-	log.Println("Heartbeat started")
+	log.Debugln("Heartbeat started")
 	return nil
 }
 

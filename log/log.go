@@ -2,19 +2,23 @@ package log
 
 import "log"
 
-var Debug = true
+var Debug = false
 
 func init() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 }
 
-func Println(v ...interface{}) {
+func Debugln(v ...interface{}) {
 	if Debug {
 		log.Println(v...)
 	}
 }
 
-func Printf(format string, v ...interface{}) {
+func Infoln(v ...interface{}) {
+	log.Println(v...)
+}
+
+func Debugf(format string, v ...interface{}) {
 	if Debug {
 		log.Printf(format, v...)
 	}

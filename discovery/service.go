@@ -80,7 +80,7 @@ func (d *Service) listener(ctx context.Context) {
 			continue
 		}
 
-		log.Printf("New entry: %#v\n", entry)
+		log.Debugf("New entry: %#v\n", entry)
 		client := cast.NewClient(entry.AddrV4, entry.Port)
 		info := decodeTxtRecord(entry.Info)
 		client.SetName(info["fn"])
