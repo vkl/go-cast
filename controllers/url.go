@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/api"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	"github.com/vkl/go-cast/net"
 )
 
@@ -62,14 +63,14 @@ func (c *URLController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Debugf("Dropped event: %#v", event)
+		log.Printf("Dropped event: %#v", event)
 	}
 }
 
 func (c *URLController) onStatus(message *api.CastMessage) {
 	response, err := c.parseStatus(message)
 	if err != nil {
-		log.Errorf("Error parsing status: %s", err)
+		log.Printf("Error parsing status: %s", err)
 	}
 
 	for _, status := range response.Status {
@@ -83,7 +84,7 @@ func (c *URLController) parseStatus(message *api.CastMessage) (*URLStatusRespons
 	err := json.Unmarshal([]byte(*message.PayloadUtf8), response)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
+		return nil, fmt.Errorf("failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
 	}
 
 	for _, status := range response.Status {
@@ -120,7 +121,7 @@ func (c *URLController) Start(ctx context.Context) error {
 func (c *URLController) GetStatus(ctx context.Context) (*URLStatusResponse, error) {
 	message, err := c.channel.Request(ctx, &getURLStatus)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get receiver status: %s", err)
+		return nil, fmt.Errorf("failed to get receiver status: %s", err)
 	}
 
 	return c.parseStatus(message)
@@ -133,7 +134,7 @@ func (c *URLController) LoadURL(ctx context.Context, url string) (*api.CastMessa
 		Type:           "loc",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to send load command: %s", err)
+		return nil, fmt.Errorf("failed to send load command: %s", err)
 	}
 
 	response := &net.PayloadHeaders{}
@@ -142,7 +143,7 @@ func (c *URLController) LoadURL(ctx context.Context, url string) (*api.CastMessa
 		return nil, err
 	}
 	if response.Type == "LOAD_FAILED" {
-		return nil, errors.New("Load URL failed")
+		return nil, errors.New("load URL failed")
 	}
 
 	return message, nil

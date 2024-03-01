@@ -3,12 +3,13 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/api"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	"github.com/vkl/go-cast/net"
 )
 
@@ -51,7 +52,7 @@ func (y *YouTubeMdxController) onSessionStatus(message *api.CastMessage) {
 	response := &MdxSessionStatus{}
 	err := json.Unmarshal([]byte(*message.PayloadUtf8), response)
 	if err != nil {
-		log.Errorf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
+		log.Printf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
 		return
 	}
 	y.mdxSessionStatus = response

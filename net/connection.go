@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"log"
 
 	"golang.org/x/net/context"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/vkl/go-cast/api"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 )
 
 type Connection struct {
@@ -44,6 +45,7 @@ func (c *Connection) Connect(ctx context.Context, host net.IP, port int) error {
 	dialer := &net.Dialer{
 		Deadline: deadline,
 	}
+	log.Printf("connect %s:%d", host, port)
 	c.conn, err = tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", host, port), &tls.Config{
 		InsecureSkipVerify: true,
 	})
@@ -60,47 +62,47 @@ func (c *Connection) ReceiveLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infoln("stop receive loop")
+			log.Println("stop receive loop")
 			return
 		default:
 			var length uint32
 			err := binary.Read(c.conn, binary.BigEndian, &length)
 			if err != nil {
-				log.Debugf("Failed to read packet length: %s", err)
+				log.Printf("Failed to read packet length: %s", err)
 				break
 			}
 			if length == 0 {
-				log.Debugln("Empty packet received")
+				log.Println("Empty packet received")
 				continue
 			}
 
 			packet := make([]byte, length)
 			i, err := io.ReadFull(c.conn, packet)
 			if err != nil {
-				log.Debugf("Failed to read packet: %s", err)
+				log.Printf("Failed to read packet: %s", err)
 				break
 			}
 
 			if i != int(length) {
-				log.Debugf("Invalid packet size. Wanted: %d Read: %d", length, i)
+				log.Printf("Invalid packet size. Wanted: %d Read: %d", length, i)
 				break
 			}
 
 			message := &api.CastMessage{}
 			err = proto.Unmarshal(packet, message)
 			if err != nil {
-				log.Debugf("Failed to unmarshal CastMessage: %s", err)
+				log.Printf("Failed to unmarshal CastMessage: %s", err)
 				break
 			}
 
-			log.Debugf("%s ⇐ %s [%s]: %+v",
+			log.Printf("%s ⇐ %s [%s]: %+v",
 				*message.DestinationId, *message.SourceId, *message.Namespace, *message.PayloadUtf8)
 
 			var headers PayloadHeaders
 			err = json.Unmarshal([]byte(*message.PayloadUtf8), &headers)
 
 			if err != nil {
-				log.Debugf("Failed to unmarshal message: %s", err)
+				log.Printf("Failed to unmarshal message: %s", err)
 				break
 			}
 
@@ -133,7 +135,7 @@ func (c *Connection) Send(payload interface{}, sourceId, destinationId, namespac
 		return err
 	}
 
-	log.Debugf("%s ⇒ %s [%s]: %s", *message.SourceId, *message.DestinationId, *message.Namespace, *message.PayloadUtf8)
+	log.Printf("%s ⇒ %s [%s]: %s", *message.SourceId, *message.DestinationId, *message.Namespace, *message.PayloadUtf8)
 
 	err = binary.Write(c.conn, binary.BigEndian, uint32(len(data)))
 	if err != nil {

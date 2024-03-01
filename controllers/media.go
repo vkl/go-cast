@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/api"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	"github.com/vkl/go-cast/net"
 )
 
@@ -127,14 +128,14 @@ func (c *MediaController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Debugf("Dropped event: %#v", event)
+		log.Printf("Dropped event: %#v", event)
 	}
 }
 
 func (c *MediaController) onStatus(message *api.CastMessage) {
 	response, err := c.parseStatus(message)
 	if err != nil {
-		log.Errorf("Error parsing status: %s", err)
+		log.Printf("Error parsing status: %s", err)
 	}
 
 	for _, status := range response.Status {

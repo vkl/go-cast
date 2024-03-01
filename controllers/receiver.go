@@ -3,12 +3,13 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/api"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	"github.com/vkl/go-cast/net"
 )
 
@@ -91,7 +92,7 @@ func (r *ReceiverController) sendEvent(event events.Event) {
 	select {
 	case r.eventsCh <- event:
 	default:
-		log.Debugf("Dropped event: %#v", event)
+		log.Printf("Dropped event: %#v", event)
 	}
 }
 
@@ -99,7 +100,7 @@ func (r *ReceiverController) onStatus(message *api.CastMessage) {
 	response := &StatusResponse{}
 	err := json.Unmarshal([]byte(*message.PayloadUtf8), response)
 	if err != nil {
-		log.Errorf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
+		log.Printf("Failed to unmarshal status message:%s - %s", err, *message.PayloadUtf8)
 		return
 	}
 
@@ -207,14 +208,14 @@ func (r *ReceiverController) QuitApp(ctx context.Context) (*api.CastMessage, err
 func (r *ReceiverController) IsPlaying(ctx context.Context) bool {
 	status, err := r.GetStatus(ctx)
 	if err != nil {
-		log.Debugln(err)
+		log.Println(err)
 		return false
 	}
 	if len(status.Applications) == 0 {
 		return false
 	}
 	for _, app := range status.Applications {
-		log.Debugln("status", *app.StatusText)
+		log.Println("status", *app.StatusText)
 		if *app.StatusText == "Ready To Cast" {
 			return false
 		}

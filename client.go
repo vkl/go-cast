@@ -2,13 +2,14 @@ package cast
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/controllers"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	castnet "github.com/vkl/go-cast/net"
 )
 
@@ -52,6 +53,7 @@ func NewClient(host net.IP, port int) *Client {
 		ctx:           context.Background(),
 		Events:        make(chan events.Event, 16),
 		displayStatus: DisplayStatus{},
+		isconnected:   false,
 	}
 }
 
@@ -100,6 +102,8 @@ func (c *Client) IsConnected() bool {
 }
 
 func (c *Client) Connect(ctx context.Context) error {
+
+	log.Println("Connect client " + c.name)
 
 	ctx, cancel := context.WithCancel(ctx)
 	c.cancel = cancel
@@ -168,7 +172,7 @@ func (c *Client) Media(ctx context.Context, appId string) (*controllers.MediaCon
 
 	status, err := c.receiver.GetStatus(ctx)
 	if err != nil {
-		log.Errorln(err)
+		log.Println(err)
 		return nil, err
 	}
 	for _, app := range status.Applications {
@@ -179,7 +183,7 @@ func (c *Client) Media(ctx context.Context, appId string) (*controllers.MediaCon
 				DefaultSender,
 				*app.TransportId,
 			)
-			log.Infoln("Media", *app.TransportId)
+			log.Println("Media", *app.TransportId)
 			c.media = media
 			goto CONN
 		}
@@ -187,7 +191,7 @@ func (c *Client) Media(ctx context.Context, appId string) (*controllers.MediaCon
 
 	status, err = c.receiver.LaunchApp(ctx, appId)
 	if err != nil {
-		log.Errorln(err)
+		log.Println(err)
 		return nil, err
 	}
 	for _, app := range status.Applications {
@@ -198,7 +202,7 @@ func (c *Client) Media(ctx context.Context, appId string) (*controllers.MediaCon
 				DefaultSender,
 				*app.TransportId,
 			)
-			log.Infoln("Media", *app.TransportId)
+			log.Println("Media", *app.TransportId)
 			c.media = media
 			goto CONN
 		}
@@ -232,37 +236,37 @@ func (c *Client) Listen(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infoln("stop listening")
+			log.Println("stop listening")
 			return
 		default:
 			event := <-c.Events
 			if value, ok := event.(events.StatusUpdated); ok {
-				log.Infoln("status", value)
+				log.Println("status", value)
 				c.displayStatus.Volume = value.Level
 			}
 			if value, ok := event.(events.MediaStatusUpdated); ok {
-				log.Infoln("media status", value)
+				log.Println("media status", value)
 				c.displayStatus.MediaStatus = value.PlayerState
 				if value.MetaData != nil {
 					c.displayStatus.MediaData = *value.MetaData
 				}
 			}
 			if value, ok := event.(events.AppStarted); ok {
-				log.Infoln("app started", value)
+				log.Println("app started", value)
 				c.displayStatus.Status = value.DisplayName
 			}
 			if value, ok := event.(events.AppStopped); ok {
-				log.Infoln("app stopped", value)
+				log.Println("app stopped", value)
 				c.media = nil
 			}
 			if value, ok := event.(events.Disconnected); ok {
-				log.Infoln("disconnected", value)
+				log.Println("disconnected", value)
 			}
 			if value, ok := event.(events.Connected); ok {
-				log.Infoln("connected", value)
+				log.Println("connected", value)
 			}
 			if value, ok := event.(events.ChannelClosed); ok {
-				log.Infoln("channel closed", value)
+				log.Println("channel closed", value)
 			}
 		}
 	}

@@ -1,12 +1,13 @@
 package net
 
 import (
+	"log"
 	"sync/atomic"
 
 	"golang.org/x/net/context"
 
 	"github.com/vkl/go-cast/api"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 )
 
 type Channel struct {
@@ -47,7 +48,7 @@ func (c *Channel) Message(message *api.CastMessage, headers *PayloadHeaders) {
 	}
 
 	if headers.Type == "" {
-		log.Errorf("Warning: No message type. Don't know what to do. headers: %v message:%v", headers, message)
+		log.Printf("Warning: No message type. Don't know what to do. headers: %v message:%v", headers, message)
 		return
 	}
 

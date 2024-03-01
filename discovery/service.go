@@ -2,6 +2,7 @@
 package discovery
 
 import (
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/hashicorp/mdns"
 	"github.com/vkl/go-cast"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 )
 
 type Service struct {
@@ -80,7 +81,7 @@ func (d *Service) listener(ctx context.Context) {
 			continue
 		}
 
-		log.Debugf("New entry: %#v\n", entry)
+		log.Printf("New entry: %#v\n", entry)
 		client := cast.NewClient(entry.AddrV4, entry.Port)
 		info := decodeTxtRecord(entry.Info)
 		client.SetName(info["fn"])

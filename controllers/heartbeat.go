@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"log"
 	"sync/atomic"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 
 	"github.com/vkl/go-cast/api"
 	"github.com/vkl/go-cast/events"
-	"github.com/vkl/go-cast/log"
+	_ "github.com/vkl/go-cast/logger"
 	"github.com/vkl/go-cast/net"
 )
 
@@ -41,7 +42,7 @@ func NewHeartbeatController(conn *net.Connection, eventsCh chan events.Event, so
 func (c *HeartbeatController) onPing(_ *api.CastMessage) {
 	err := c.channel.Send(pong)
 	if err != nil {
-		log.Errorf("Error sending pong: %s", err)
+		log.Printf("Error sending pong: %s", err)
 	}
 }
 
@@ -49,7 +50,7 @@ func (c *HeartbeatController) sendEvent(event events.Event) {
 	select {
 	case c.eventsCh <- event:
 	default:
-		log.Debugf("Dropped event: %#v", event)
+		log.Printf("Dropped event: %#v", event)
 	}
 }
 
@@ -69,7 +70,7 @@ func (c *HeartbeatController) Start(ctx context.Context) error {
 			select {
 			case <-c.ticker.C:
 				if atomic.LoadInt64(&c.pongs) >= maxBacklog {
-					log.Errorf("Missed %d pongs", c.pongs)
+					log.Printf("Missed %d pongs", c.pongs)
 					c.sendEvent(events.Disconnected{
 						Reason: errors.New("ping timeout"),
 					})
@@ -78,18 +79,18 @@ func (c *HeartbeatController) Start(ctx context.Context) error {
 				err := c.channel.Send(ping)
 				atomic.AddInt64(&c.pongs, 1)
 				if err != nil {
-					log.Errorf("Error sending ping: %s", err)
+					log.Printf("Error sending ping: %s", err)
 					c.sendEvent(events.Disconnected{Reason: err})
 					break LOOP
 				}
 			case <-ctx.Done():
-				log.Debugln("Heartbeat stopped")
+				log.Println("Heartbeat stopped")
 				break LOOP
 			}
 		}
 	}()
 
-	log.Debugln("Heartbeat started")
+	log.Println("Heartbeat started")
 	return nil
 }
 
