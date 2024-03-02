@@ -73,6 +73,10 @@ func (c *Client) Name() string {
 	return c.name
 }
 
+func (c *Client) GetInfo() map[string]string {
+	return c.info
+}
+
 func (c *Client) SetInfo(info map[string]string) {
 	c.info = info
 }

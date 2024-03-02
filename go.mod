@@ -1,6 +1,6 @@
 module github.com/vkl/go-cast
 
-go 1.21.4
+go 1.21
 
 require (
 	github.com/gogo/protobuf v1.3.2
