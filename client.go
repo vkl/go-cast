@@ -265,6 +265,8 @@ func (c *Client) Listen(ctx context.Context) {
 			}
 			if value, ok := event.(events.Disconnected); ok {
 				log.Println("disconnected", value)
+				c.Close()
+				return
 			}
 			if value, ok := event.(events.Connected); ok {
 				log.Println("connected", value)
